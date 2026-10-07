@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>조각내기 메이커</title>
+<link href="https://fonts.googleapis.com/css2?family=Do+Hyeon&family=Gowun+Dodum&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#e9e6ff;--panel:#fff;--ink:#25214a;--sub:#6b6790;--accent:#ff5d9e;--line:#cfc9f5;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#17142e;--panel:#221e42;--ink:#f1eeff;--sub:#a9a4d6;--accent:#ff7ab0;--line:#3a3566}}
+:root[data-theme="dark"]{--bg:#17142e;--panel:#221e42;--ink:#f1eeff;--sub:#a9a4d6;--accent:#ff7ab0;--line:#3a3566}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:'Gowun Dodum','Apple SD Gothic Neo','Malgun Gothic',sans-serif;line-height:1.5}
+main{max-width:720px;margin:0 auto;padding:16px}
+h1{font-family:'Do Hyeon','Apple SD Gothic Neo',sans-serif;font-weight:400;font-size:2rem;margin:4px 0 2px}
+p.lead{margin:0 0 14px;color:var(--sub)}
+.stage{background:var(--panel);border:2px dashed var(--line);border-radius:18px;padding:10px}
+canvas{display:block;width:100%;height:auto;border-radius:10px;cursor:crosshair;touch-action:manipulation}
+.hint{font-size:.85rem;color:var(--sub);margin:6px 2px 0}
+.panel{background:var(--panel);border-radius:18px;padding:14px;margin-top:12px;display:grid;gap:14px}
+label.t,.t{font-size:.9rem;color:var(--sub);display:block;margin-bottom:4px}
+.row{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:2px solid var(--line);background:transparent;color:var(--ink);border-radius:999px;padding:6px 14px;font:inherit;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+.chip:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+input[type=range]{width:100%;accent-color:var(--accent)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+select,input[type=color]{font:inherit;width:100%;height:38px;border-radius:10px;border:2px solid var(--line);background:var(--panel);color:var(--ink)}
+.btn{font:inherit;border:0;border-radius:12px;padding:11px 16px;cursor:pointer;background:var(--ink);color:var(--bg)}
+.btn.main{background:var(--accent);color:#fff;font-size:1.05rem}
+.file{display:block;text-align:center;padding:12px;border:2px dashed var(--accent);border-radius:12px;cursor:pointer;color:var(--accent)}
+.file input{display:none}
+.head{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.tray{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:10px}
+.tray:empty::before{content:'아직 비어 있어요';color:var(--sub);font-size:.9rem}
+.th{display:grid;gap:6px;justify-items:center}
+.th img,#out img{background:repeating-conic-gradient(#d9d5f2 0 25%,#fff 0 50%) 0 0/16px 16px}
+.th img{width:100%;aspect-ratio:1;object-fit:contain;border-radius:10px}
+#out{position:fixed;inset:0;background:rgba(10,8,30,.82);display:none;align-items:center;justify-content:center;flex-direction:column;gap:10px;padding:16px;z-index:9}
+#out.on{display:flex}
+#out img{max-width:100%;max-height:70vh;border-radius:10px;-webkit-touch-callout:default;user-select:auto}
+#out p{color:#fff;margin:0}
+</style>
+</head>
+<body>
+<main>
+<h1>조각내기 메이커</h1>
+<p class="lead">그림을 도형으로 오려내서, 조각은 따로 빼고 빈자리는 남겨 보세요.</p>
+
+<div class="stage">
+<canvas id="cv" width="900" height="900" aria-label="미리보기"></canvas>
+<p class="hint">조각을 끌어서 옮기고, 탭해서 고른 뒤 아래 버튼으로 크기를 바꿔요. 빈 곳을 그리면 새 조각이 돼요.</p>
+</div>
+
+<div class="panel">
+<label class="file">그림 불러오기<input type="file" id="file" accept="image/*"></label>
+
+<div>
+<span class="t">도형</span>
+<div class="row" id="shapes"></div>
+</div>
+
+<div class="grid">
+<div><label class="t" for="count">조각 개수 <b id="vc"></b></label><input type="range" id="count" min="1" max="14" value="6"></div>
+<div><label class="t" for="size">조각 크기 <b id="vs"></b></label><input type="range" id="size" min="2" max="30" value="14"></div>
+</div>
+
+<div class="grid">
+<div><label class="t" for="hole">빈자리 모양</label>
+<select id="hole"><option value="solid">단색으로 채움</option><option value="dash">점선 윤곽 + 단색</option><option value="ghost">흐릿하게 남김</option></select></div>
+<div><label class="t" for="holec">빈자리 색</label><input type="color" id="holec" value="#ffffff"></div>
+<div><label class="t" for="pbg">조각 그림 바탕</label>
+<select id="pbg"><option value="white">흰색</option><option value="clear">투명</option></select></div>
+</div>
+
+<div class="row">
+<button class="chip" id="border" aria-pressed="true">조각에 흰 테두리</button>
+</div>
+
+<div class="row">
+<span class="t" style="margin:0;align-self:center">선택한 조각</span>
+<button class="chip" id="smaller">− 작게</button>
+<button class="chip" id="bigger">＋ 크게</button>
+<button class="chip" id="del">삭제</button>
+</div>
+
+<div class="row">
+<button class="btn main" id="shuffle">다시 섞기</button>
+<button class="btn" id="undo">마지막 조각 지우기</button>
+<button class="btn main" id="savep">조각만 저장 (제자리)</button>
+<button class="btn" id="save">구멍 난 그림 저장</button>
+</div>
+</div>
+
+<section class="panel">
+<div class="head"><b>잘라낸 조각</b><button class="btn main" id="keep">보관함에 담기</button></div>
+<div class="tray" id="tray"></div>
+</section>
+<section class="panel">
+<div class="head"><b>보관함</b><button class="btn" id="clear">비우기</button></div>
+<p class="hint">이 기기의 브라우저에 남아서, 나중에 다시 열어도 저장할 수 있어요.</p>
+<div class="tray" id="stash"></div>
+</section>
+</main>
+
+<div id="out"><p>이미지를 길게 눌러서 저장하세요 (PC는 우클릭)</p><img id="outimg" alt="완성 이미지"><button class="btn" id="close">닫기</button></div>
+
+<script>
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
+const SHAPES={free:'직접 그리기',circle:'동그라미',square:'네모',star:'별',heart:'하트',drop:'물방울',mix:'섞기'};
+let shape='free',img=null,pieces=[],W=900,H=900,border=true,shadow=true;
+const $=id=>document.getElementById(id);
+
+function path(c,x,y,r,s,pts){
+  c.beginPath();
+  if(s==='free'&&pts){const n=pts.length;c.moveTo((pts[0][0]+pts[n-1][0])/2,(pts[0][1]+pts[n-1][1])/2);for(let i=0;i<n;i++){const a=pts[i],b=pts[(i+1)%n];c.quadraticCurveTo(a[0],a[1],(a[0]+b[0])/2,(a[1]+b[1])/2)}c.closePath();return}
+  if(s==='circle'){c.arc(x,y,r,0,Math.PI*2)}
+  else if(s==='square'){const k=r*.85,q=r*.25;c.roundRect(x-k,y-k,k*2,k*2,q)}
+  else if(s==='star'){for(let i=0;i<10;i++){const a=-Math.PI/2+i*Math.PI/5,d=i%2?r*.5:r*1.1;c[i?'lineTo':'moveTo'](x+Math.cos(a)*d,y+Math.sin(a)*d)}c.closePath()}
+  else if(s==='heart'){c.moveTo(x,y+r*.9);c.bezierCurveTo(x-r*1.3,y+r*.1,x-r*.9,y-r*.9,x,y-r*.35);c.bezierCurveTo(x+r*.9,y-r*.9,x+r*1.3,y+r*.1,x,y+r*.9);c.closePath()}
+  else{c.moveTo(x,y-r);c.bezierCurveTo(x+r*.15,y-r*.6,x+r*.85,y-r*.1,x+r*.85,y+r*.25);c.bezierCurveTo(x+r*.85,y+r*.75,x+r*.45,y+r,x,y+r);c.bezierCurveTo(x-r*.45,y+r,x-r*.85,y+r*.75,x-r*.85,y+r*.25);c.bezierCurveTo(x-r*.85,y-r*.1,x-r*.15,y-r*.6,x,y-r);c.closePath()}
+}
+const pick=()=>{const k=Object.keys(SHAPES).filter(k=>k!=='mix'&&k!=='free');return shape==='mix'?k[Math.random()*k.length|0]:shape};
+const R=()=>+$('size').value/100*Math.min(W,H);
+
+function shuffle(){
+  if(shape==='free'){draw();return}
+  pieces=[];sel=-1;const n=+$('count').value;
+  for(let i=0,t=0;i<n&&t<400;t++){
+    const r=R()*(.75+Math.random()*.5),x=r+Math.random()*(W-2*r),y=r+Math.random()*(H-2*r);
+    if(pieces.every(p=>Math.hypot(p.x-x,p.y-y)>(p.r+r)*1.35)){pieces.push({x,y,r,s:pick(),a:Math.random()*Math.PI*2});i++}
+  }
+  draw();
+}
+
+function setImg(im){
+  const m=1000,k=Math.min(1,m/Math.max(im.width,im.height));
+  W=cv.width=Math.round(im.width*k);H=cv.height=Math.round(im.height*k);
+  img=im;pieces=[];sel=-1;shuffle();
+}
+
+function sample(){
+  const c=document.createElement('canvas');c.width=c.height=900;const g=c.getContext('2d');
+  const gr=g.createLinearGradient(0,0,900,900);gr.addColorStop(0,'#ffb3d1');gr.addColorStop(.5,'#b9a7ff');gr.addColorStop(1,'#7fd6ff');
+  g.fillStyle=gr;g.fillRect(0,0,900,900);
+  [[200,220,170,'#fff6a8'],[650,300,210,'#ff8fb8'],[420,640,230,'#8fffd0'],[760,760,130,'#ffd27f'],[130,720,120,'#d0b3ff']].forEach(([x,y,r,col])=>{g.fillStyle=col;g.beginPath();g.arc(x,y,r,0,7);g.fill()});
+  g.fillStyle='#25214a';g.font='bold 120px sans-serif';g.textAlign='center';g.fillText('SAMPLE',450,480);
+  setImg(c);
+}
+
+// UI
+const sh=$('shapes');
+Object.entries(SHAPES).forEach(([k,v])=>{
+  const b=document.createElement('button');b.className='chip';b.textContent=v;b.setAttribute('aria-pressed',k===shape);
+  b.onclick=()=>{shape=k;[...sh.children].forEach(c=>c.setAttribute('aria-pressed',c===b));if(k==='free'){pieces=[];sel=-1;draw()}else shuffle()};
+  sh.appendChild(b);
+});
+const sync=()=>{$('vc').textContent=$('count').value+'개';$('vs').textContent=$('size').value};
+['count','size'].forEach(i=>$(i).oninput=()=>{sync();shuffle()});
+['hole','holec'].forEach(i=>$(i).oninput=()=>{sync();draw()});
+$('border').onclick=e=>{border=!border;e.target.setAttribute('aria-pressed',border);draw()};
+$('shuffle').onclick=shuffle;
+$('undo').onclick=()=>{pieces.pop();sel=-1;draw()};
+cv.onclick=e=>{if(shape==='free'||blockClick)return;const b=cv.getBoundingClientRect();pieces.push({x:(e.clientX-b.left)*W/b.width,y:(e.clientY-b.top)*H/b.height,r:R(),s:pick(),a:Math.random()*Math.PI*2});sel=pieces.length-1;draw()};
+$('file').onchange=e=>{
+  const f=e.target.files[0];if(!f)return;
+  const im=new Image();im.onload=()=>setImg(im);im.src=URL.createObjectURL(f);
+};
+$('save').onclick=()=>{clean=true;draw(true);const u=cv.toDataURL('image/png');clean=false;draw(true);show(u)};
+$('close').onclick=()=>$('out').classList.remove('on');
+function draw(nt){
+  if(!img)return;
+  ctx.clearRect(0,0,W,H);ctx.drawImage(img,0,0,W,H);
+  const hc=$('holec').value,hs=$('hole').value;
+  pieces.forEach(p=>{
+    path(ctx,p.x,p.y,p.r,p.s,p.pts);
+    if(hs==='ghost'){ctx.save();ctx.clip();ctx.fillStyle=hc;ctx.globalAlpha=.8;ctx.fillRect(0,0,W,H);ctx.restore()}
+    else{ctx.fillStyle=hc;ctx.fill()}
+    if(hs==='dash'){ctx.save();ctx.setLineDash([10,9]);ctx.lineWidth=3;ctx.strokeStyle='#8f88c9';ctx.stroke();ctx.restore()}
+  });
+  if(sel>=0&&pieces[sel]&&!clean){const p=pieces[sel];ctx.save();path(ctx,p.x,p.y,p.r,p.s,p.pts);ctx.setLineDash([8,6]);ctx.lineWidth=4;ctx.strokeStyle='#ff5d9e';ctx.stroke();ctx.restore()}
+  if(!nt)tray();
+}
+function renderPiece(p){
+  const pad=border?10:2,half=Math.ceil(p.r*1.4)+pad,k=Math.min(1,600/(half*2));
+  const c=document.createElement('canvas');c.width=c.height=Math.round(half*2*k);
+  const g=c.getContext('2d');g.scale(k,k);g.translate(half-p.x,half-p.y);
+  path(g,p.x,p.y,p.r,p.s,p.pts);
+  if(border){g.lineJoin='round';g.lineWidth=14;g.strokeStyle='#fff';g.fillStyle='#fff';g.fill();g.stroke()}
+  g.clip();g.drawImage(img,0,0,W,H);
+  return c.toDataURL('image/png');
+}
+function show(u){$('outimg').src=u;$('out').classList.add('on')}
+function thumbs(el,urls){
+  el.innerHTML='';
+  urls.forEach(u=>{
+    const d=document.createElement('div');d.className='th';
+    const i=new Image();i.src=u;i.alt='조각';
+    const b=document.createElement('button');b.className='chip';b.textContent='저장';b.onclick=()=>show(u);
+    d.append(i,b);el.append(d);
+  });
+}
+let cur=[],stash=[];
+try{stash=JSON.parse(localStorage.getItem('cutout-stash')||'[]')}catch(e){}
+function saveStash(){
+  while(stash.length){try{localStorage.setItem('cutout-stash',JSON.stringify(stash));return}catch(e){stash.shift()}}
+  try{localStorage.removeItem('cutout-stash')}catch(e){}
+}
+function tray(){cur=pieces.map(renderPiece);thumbs($('tray'),cur)}
+function showStash(){thumbs($('stash'),stash)}
+$('keep').onclick=e=>{
+  stash=stash.concat(cur).slice(-24);saveStash();showStash();
+  const b=e.target;b.textContent='담았어요!';setTimeout(()=>b.textContent='보관함에 담기',1200);
+};
+$('clear').onclick=()=>{stash=[];saveStash();showStash()};
+let st=null,drag=null,sel=-1,blockClick=false,clean=false;
+const pt=e=>{const b=cv.getBoundingClientRect();return[(e.clientX-b.left)*W/b.width,(e.clientY-b.top)*H/b.height]};
+const hit=q=>{for(let i=pieces.length-1;i>=0;i--){const p=pieces[i];path(ctx,p.x,p.y,p.r,p.s,p.pts);if(ctx.isPointInPath(q[0],q[1]))return i}return -1};
+function mv(p,dx,dy){p.x+=dx;p.y+=dy;if(p.pts)p.pts=p.pts.map(a=>[a[0]+dx,a[1]+dy])}
+function sc(p,f){if(p.pts)p.pts=p.pts.map(a=>[p.x+(a[0]-p.x)*f,p.y+(a[1]-p.y)*f]);p.r*=f}
+cv.onpointerdown=e=>{
+  const q=pt(e),i=hit(q);
+  if(i>=0){sel=i;drag=q;blockClick=true;cv.setPointerCapture(e.pointerId);draw(true);return}
+  if(shape==='free'){sel=-1;st=[q];cv.setPointerCapture(e.pointerId);draw(true)}
+};
+cv.onpointermove=e=>{
+  const q=pt(e);
+  if(drag){mv(pieces[sel],q[0]-drag[0],q[1]-drag[1]);drag=q;draw(true);return}
+  if(!st)return;const l=st[st.length-1];
+  if(Math.hypot(q[0]-l[0],q[1]-l[1])<8)return;
+  st.push(q);draw(true);
+  ctx.save();path(ctx,0,0,0,'free',st);ctx.fillStyle='rgba(255,93,158,.25)';ctx.fill();ctx.setLineDash([10,8]);ctx.lineWidth=3;ctx.strokeStyle='#ff5d9e';ctx.stroke();ctx.restore();
+};
+cv.onpointerup=cv.onpointercancel=()=>{
+  if(drag){drag=null;draw();setTimeout(()=>blockClick=false,60);return}
+  if(!st)return;const pts=st;st=null;
+  if(pts.length>=4){
+    const xs=pts.map(a=>a[0]),ys=pts.map(a=>a[1]),x0=Math.min(...xs),x1=Math.max(...xs),y0=Math.min(...ys),y1=Math.max(...ys);
+    pieces.push({x:(x0+x1)/2,y:(y0+y1)/2,r:Math.max(x1-x0,y1-y0)/2.4,s:'free',pts,a:0});sel=pieces.length-1;
+  }
+  draw();
+};
+$('smaller').onclick=()=>{if(sel>=0){sc(pieces[sel],.85);draw()}};
+$('bigger').onclick=()=>{if(sel>=0){sc(pieces[sel],1.18);draw()}};
+$('del').onclick=()=>{if(sel>=0){pieces.splice(sel,1);sel=-1;draw()}};
+$('savep').onclick=()=>{
+  const c=document.createElement('canvas');c.width=W;c.height=H;const g=c.getContext('2d');
+  if($('pbg').value==='white'){g.fillStyle='#fff';g.fillRect(0,0,W,H)}
+  pieces.forEach(p=>{g.save();path(g,p.x,p.y,p.r,p.s,p.pts);g.clip();g.drawImage(img,0,0,W,H);g.restore()});
+  show(c.toDataURL('image/png'));
+};
+cv.style.touchAction='none';
+sync();sample();showStash();
+</script>
+</body>
+</html>
